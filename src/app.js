@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth.routes');
 const eventRoutes = require('./routes/event.routes');
@@ -13,12 +14,14 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
+  credentials: true,
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error('CORS blocked: ' + origin));
   }
 }));
 app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser());
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'MyCampus API' }));
 app.use('/api/auth', authRoutes);

@@ -11,7 +11,7 @@ const campusPostSchema = new mongoose.Schema({
   location: { type: String, trim: true, default: '' },
   contact: { type: String, trim: true, default: '' },
   deadline: { type: Date, default: null },
-  status: { type: String, enum: ['pending', 'approved', 'closed'], default: 'approved' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'closed'], default: 'pending' },
   featured: { type: Boolean, default: false }
 }, { timestamps: true });
 
