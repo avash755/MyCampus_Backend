@@ -10,6 +10,7 @@ const { sendCodeEmail } = require('../services/email.service');
 
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const makeCode = () => String(crypto.randomInt(100000, 1000000));
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
 function createToken(user) {
   return jwt.sign(
@@ -29,6 +30,17 @@ function safeUser(user) {
     studentId: user.studentId,
     avatarColor: user.avatarColor,
     isVerified: user.isVerified
+  };
+}
+
+function sessionCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: SESSION_MAX_AGE,
+    path: '/'
   };
 }
 
@@ -69,13 +81,20 @@ async function register(req, res, next) {
       verificationTokenExpireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
+    let emailSent = true;
     try {
       await sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'email' });
     } catch (emailError) {
-      await user.deleteOne();
-      return res.status(503).json({ message: emailError.message || 'Could not send the verification email.' });
+      emailSent = false;
+      console.error('Verification email could not be sent:', emailError.message);
     }
-    res.status(201).json({ message: 'Check your email for a six-digit verification code.', email: user.email });
+    res.status(201).json({
+      message: emailSent
+        ? 'Check your email for a six-digit verification code.'
+        : 'Your account was created, but the verification email could not be sent. Fix email delivery, then request a new code.',
+      email: user.email,
+      emailSent
+    });
   } catch (err) {
     next(err);
   }
@@ -118,7 +137,8 @@ async function verifyEmail(req, res, next) {
     user.verificationTokenPurpose = null;
     user.verificationTokenExpireAt = null;
     await user.save();
-    res.json({ token: createToken(user), user: safeUser(user), message: 'Your email is verified.' });
+    res.cookie('token', createToken(user), sessionCookieOptions());
+    res.json({ user: safeUser(user), message: 'Your email is verified.' });
   } catch (err) {
     next(err);
   }
@@ -134,7 +154,8 @@ async function login(req, res, next) {
     if (!user.isVerified) {
       return res.status(403).json({ code: 'EMAIL_NOT_VERIFIED', message: 'Verify your email before signing in.' });
     }
-    res.json({ token: createToken(user), user: safeUser(user) });
+    res.cookie('token', createToken(user), sessionCookieOptions());
+    res.json({ user: safeUser(user) });
   } catch (err) {
     next(err);
   }
@@ -215,6 +236,12 @@ async function me(req, res) {
   res.json({ user: safeUser(req.user) });
 }
 
+function logout(req, res) {
+  const { maxAge, ...cookieOptions } = sessionCookieOptions();
+  res.clearCookie('token', cookieOptions);
+  res.json({ message: 'You have been signed out.' });
+}
+
 async function updateMe(req, res, next) {
   try {
     const { name, department, studentId } = req.body;
@@ -255,6 +282,6 @@ async function deleteMe(req, res, next) {
 }
 
 module.exports = {
-  register, login, me, sendOtp, verifyEmail, forgotPassword, verifyResetCode,
+  register, login, logout, me, sendOtp, verifyEmail, forgotPassword, verifyResetCode,
   newPassword, updateMe, deleteMe
 };

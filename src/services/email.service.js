@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+let smtpTransporter;
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, (character) => ({
@@ -10,12 +11,20 @@ function transporter() {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error('Email is not configured. Add SMTP_USER and SMTP_PASS to server/.env.');
   }
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-  });
+  if (!smtpTransporter) {
+    smtpTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      pool: true,
+      maxConnections: 2,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    });
+  }
+  return smtpTransporter;
 }
 
 async function sendCodeEmail({ email, name, code, purpose }) {
