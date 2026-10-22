@@ -55,6 +55,15 @@ function resetCookieOptions() {
   };
 }
 
+function queueVerificationEmail(user, code) {
+  setImmediate(() => {
+    sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'email' })
+      .catch((emailError) => {
+        console.error('Verification email could not be sent:', emailError.message);
+      });
+  });
+}
+
 async function register(req, res, next) {
   try {
     const { name, email, password, department, studentId } = req.body;
@@ -81,19 +90,11 @@ async function register(req, res, next) {
       verificationTokenExpireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
-    let emailSent = true;
-    try {
-      await sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'email' });
-    } catch (emailError) {
-      emailSent = false;
-      console.error('Verification email could not be sent:', emailError.message);
-    }
+    queueVerificationEmail(user, code);
     res.status(201).json({
-      message: emailSent
-        ? 'Check your email for a six-digit verification code.'
-        : 'Your account was created, but the verification email could not be sent. Fix email delivery, then request a new code.',
+      message: 'Your account was created. Your verification code is being sent.',
       email: user.email,
-      emailSent
+      emailStatus: 'pending'
     });
   } catch (err) {
     next(err);
