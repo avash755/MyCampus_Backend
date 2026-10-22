@@ -15,7 +15,7 @@ function createToken(user) {
   return jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '30d' }
   );
 }
 
@@ -33,10 +33,11 @@ function safeUser(user) {
 }
 
 function resetCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 10 * 60 * 1000,
     path: '/'
   };
@@ -202,7 +203,8 @@ async function newPassword(req, res, next) {
     user.resetTokenHash = null;
     user.resetTokenExpireAt = null;
     await user.save();
-    res.clearCookie('resetToken', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
+    const { maxAge, ...cookieOptions } = resetCookieOptions();
+    res.clearCookie('resetToken', cookieOptions);
     res.json({ message: 'Your password has been updated. You can sign in now.' });
   } catch (err) {
     next(err);
