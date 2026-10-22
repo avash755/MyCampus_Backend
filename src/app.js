@@ -8,15 +8,20 @@ const postRoutes = require('./routes/post.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
+function normalizeOrigin(value) {
+  try { return new URL(value).origin; }
+  catch { return String(value || '').replace(/\/+$/, ''); }
+}
+
 const allowedOrigins = [
   'http://localhost:5173',
   ...(process.env.CLIENT_URL || '').split(',').map((origin) => origin.trim()).filter(Boolean)
-];
+].map(normalizeOrigin);
 
 app.use(cors({
   credentials: true,
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) return callback(null, true);
     return callback(new Error('CORS blocked: ' + origin));
   }
 }));

@@ -55,11 +55,11 @@ function resetCookieOptions() {
   };
 }
 
-function queueVerificationEmail(user, code) {
+function queueCodeEmail(user, code, purpose) {
   setImmediate(() => {
-    sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'email' })
+    sendCodeEmail({ email: user.email, name: user.name, code, purpose })
       .catch((emailError) => {
-        console.error('Verification email could not be sent:', emailError.message);
+        console.error(`${purpose} email could not be sent:`, emailError.message);
       });
   });
 }
@@ -70,8 +70,8 @@ async function register(req, res, next) {
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required.' });
     }
-    if (password.length < 7) { /// I Changed
-      return res.status(400).json({ message: 'Use a password with at least 7 characters.' }); 
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Use a password with at least 8 characters.' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -90,7 +90,7 @@ async function register(req, res, next) {
       verificationTokenExpireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
-    queueVerificationEmail(user, code);
+    queueCodeEmail(user, code, 'email');
     res.status(201).json({
       message: 'Your account was created. Your verification code is being sent.',
       email: user.email,
@@ -113,8 +113,8 @@ async function sendOtp(req, res, next) {
     user.verificationTokenPurpose = 'email';
     user.verificationTokenExpireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
-    await sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'email' });
-    res.json({ message: 'A new verification code has been sent.' });
+    queueCodeEmail(user, code, 'email');
+    res.json({ message: 'A new verification code is being sent.', emailStatus: 'pending' });
   } catch (err) {
     next(err);
   }
@@ -174,7 +174,7 @@ async function forgotPassword(req, res, next) {
       user.resetTokenHash = null;
       user.resetTokenExpireAt = null;
       await user.save();
-      await sendCodeEmail({ email: user.email, name: user.name, code, purpose: 'password' });
+      queueCodeEmail(user, code, 'password');
     }
     res.json({ message: 'If a verified account uses that email, a password reset code has been sent.' });
   } catch (err) {
