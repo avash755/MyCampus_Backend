@@ -58,6 +58,7 @@ function resetCookieOptions() {
 function queueCodeEmail(user, code, purpose) {
   setImmediate(() => {
     sendCodeEmail({ email: user.email, name: user.name, code, purpose })
+      .then(() => console.info(`${purpose} email accepted by Brevo.`))
       .catch((emailError) => {
         console.error(`${purpose} email could not be sent:`, emailError.message);
       });
