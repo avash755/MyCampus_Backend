@@ -4,6 +4,12 @@ const campusPostSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 140 },
   body: { type: String, required: true, trim: true, maxlength: 3000 },
   category: { type: String, enum: ['resource', 'lost-found', 'opportunity', 'notice'], required: true },
+  itemStatus: {
+    type: String,
+    enum: ['lost', 'found'],
+    default: function defaultLostFoundStatus() { return this.category === 'lost-found' ? 'found' : undefined; },
+    required: function isLostFoundStatusRequired() { return this.category === 'lost-found'; }
+  },
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   department: { type: String, trim: true, default: '' },
   tags: [{ type: String, trim: true }],

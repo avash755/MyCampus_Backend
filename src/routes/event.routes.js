@@ -4,7 +4,7 @@ const {
 } = require('../controllers/event.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
-router.get('/', listEvents);
+router.get('/', protect, listEvents);
 router.post('/', protect, createEvent);
 router.post('/:id/register', protect, registerForEvent);
 router.delete('/:id', protect, deleteEvent);

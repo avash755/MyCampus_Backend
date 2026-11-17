@@ -5,6 +5,8 @@ const eventSchema = new mongoose.Schema({
   category: { type: String, enum: ['Workshop', 'Community', 'Career', 'Social', 'Academic'], default: 'Community' },
   description: { type: String, required: true, trim: true, maxlength: 2000 },
   date: { type: Date, required: true },
+  startsAt: { type: Date, default: null },
+  expiresAt: { type: Date, required: true },
   time: { type: String, default: '10:00 AM' },
   location: { type: String, required: true, trim: true },
   capacity: {
@@ -19,5 +21,6 @@ const eventSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 eventSchema.index({ date: 1, category: 1 });
+eventSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('Event', eventSchema);

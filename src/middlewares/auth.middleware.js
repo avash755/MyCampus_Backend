@@ -7,9 +7,13 @@ async function protect(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Please sign in to continue.' });
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'mycampus-development-secret');
-    const user = await User.findById(payload.id);
+    if (!process.env.JWT_SECRET) return res.status(503).json({ message: 'Authentication is not configured.' });
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(payload.id).select('+tokenVersion');
     if (!user) return res.status(401).json({ message: 'Account not found.' });
+    if (Number(payload.tokenVersion || 0) !== Number(user.tokenVersion || 0)) {
+      return res.status(401).json({ message: 'Your session is no longer valid. Please sign in again.' });
+    }
     req.user = user;
     next();
   } catch (err) {

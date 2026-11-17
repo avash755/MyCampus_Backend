@@ -9,7 +9,15 @@ async function getSummary(req, res, next) {
       CampusPost.countDocuments({ category: 'resource', status: 'approved' }),
       CampusPost.countDocuments({ category: 'opportunity', status: 'approved' }),
       CampusPost.countDocuments({ category: 'lost-found', status: 'approved' }),
-      Event.find({ date: { $gte: today } }).sort({ date: 1 }).limit(4).populate('organizer', 'name')
+      Event.find({
+        $expr: { $and: [
+          { $gt: [{ $ifNull: ['$startsAt', '$date'] }, today] },
+          { $or: [
+            { $eq: [{ $ifNull: ['$capacity', null] }, null] },
+            { $lt: [{ $size: { $ifNull: ['$attendees', []] } }, '$capacity'] }
+          ] }
+        ] }
+      }).sort({ date: 1 }).limit(4).populate('organizer', 'name department avatarColor +profileImage')
     ]);
     res.json({
       summary: { eventCount, resourceCount, opportunityCount, lostFoundCount },
